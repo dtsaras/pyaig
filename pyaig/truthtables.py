@@ -1,6 +1,5 @@
 from __future__ import print_function
 
-from past.builtins import xrange
 from future.utils import lrange
 from functools import reduce
 
@@ -140,10 +139,10 @@ class _truth_table(object):
         >>> f.depend_vars()
         [0, 3]
         """
-        return [ v for v in xrange(self.nvars()) if self.depends(v) ]
+        return [ v for v in range(self.nvars()) if self.depends(v) ]
 
     def min_variable(self, minv=0):
-        for v in xrange(minv, self.m.N):
+        for v in range(minv, self.m.N):
             if self.depends(v):
                 return v
 
@@ -165,13 +164,13 @@ class _truth_table(object):
 
             yield tt
 
-            for j in xrange(1, n):
+            for j in range(1, n):
                 if a[j] > a[j-1]:
                     break
             else:
                 return
 
-            for l in xrange(n):
+            for l in range(n):
                 if a[j] > a[l]:
                     a[j], a[l] = a[l], a[j]
                     tt = tt.permute(l,j)
@@ -193,11 +192,11 @@ class _truth_table(object):
 
         n = self.nvars()
 
-        for m in xrange( 0, 1<<n ):
+        for m in range( 0, 1<<n ):
 
             tt = self.copy()
 
-            for v in xrange( n ):
+            for v in range( n ):
 
                 if m & ( 1 << v ):
                     tt = tt.negate_var(v)
@@ -222,7 +221,7 @@ class _truth_table(object):
         for p in sop:
             pl = []
 
-            for i in xrange(1, N+1):
+            for i in range(1, N+1):
                 if i in p:
                     pl.append( '1' )
                 elif -i in p:
@@ -283,14 +282,14 @@ class truth_tables(object):
 
         self.cofactor_masks = [[],[]]
 
-        for v in xrange(N):
+        for v in range(N):
 
             bits = 1<<v
             res = ~( ~0 << bits )
 
             mask_bits = bits << 1
 
-            for _ in xrange( self.N-(v+1) ):
+            for _ in range( self.N-(v+1) ):
 
                 res |= res << mask_bits
                 mask_bits <<= 1
@@ -299,7 +298,7 @@ class truth_tables(object):
             self.cofactor_masks[1].append( res << bits )
 
         self.all_consts = [ _truth_table(self, self.mask*c) for c in (0, 1) ]
-        self.all_vars = [ [_truth_table(self, self.cofactor_masks[c][i]) for i in xrange(N)] for c in (0, 1) ]
+        self.all_vars = [ [_truth_table(self, self.cofactor_masks[c][i]) for i in range(N)] for c in (0, 1) ]
 
         if names:
             import inspect
@@ -323,7 +322,7 @@ class truth_tables(object):
 
         nfuncs = ( 1<<self.nbits )
 
-        for i in xrange(nfuncs):
+        for i in range(nfuncs):
             yield _truth_table(self, i)
 
     def canonize(self):
@@ -382,7 +381,7 @@ if __name__=="__main__":
     import string
     m = truth_tables(N, string.ascii_uppercase)
 
-    x = [ m.var(v,1) for v in xrange(N) ]
+    x = [ m.var(v,1) for v in range(N) ]
 
     print( "XOR:" )
     print( m.xor(x[:4]).SOP() )
@@ -398,10 +397,10 @@ if __name__=="__main__":
 
     res = m.const(0)
 
-    for i in xrange(1, N-2):
+    for i in range(1, N-2):
         res |= x[i]
 
-    for i in xrange(N-2, N):
+    for i in range(N-2, N):
         res &= ~x[i]
 
     print( "Equations:" )
@@ -425,6 +424,6 @@ if __name__=="__main__":
     print( N, res.count() )
 
     print()
-    for N in xrange(0, 4+1):
+    for N in range(0, 4+1):
         m = truth_tables(N)
         print( 'Number of NPN classes for %d-variable Boolean functions is: %d'%(N, len(set(m.canonize().values()))) )

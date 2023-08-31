@@ -1,5 +1,4 @@
 from future.utils import iteritems
-from past.builtins import xrange
 
 from .aig import AIG
 from .aig_io import read_aiger, write_aiger
@@ -114,7 +113,7 @@ def restore_po_info( saved, aiger_in, aiger_out ):
 def delay(aig, f, n=1, init=AIG.INIT_ZERO, name=None):
     """ delay 'f' for 'n' cycles, start at 'init' """
 
-    for i in xrange(n):
+    for i in range(n):
         f = aig.create_latch(name=name, init=init, next=f)
         
     return f

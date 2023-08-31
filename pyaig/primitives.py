@@ -1,7 +1,6 @@
 from __future__ import print_function
 
 import itertools
-from past.builtins import xrange
 from future.moves.itertools import zip_longest
 
 from .aig import AIG
@@ -43,16 +42,16 @@ def group(iterable, N, fillvalue=None):
     """
     >>> list(group((), 3, fillvalue=-1))
     []
-    >>> list(group(xrange(6), 3, fillvalue=-1))
+    >>> list(group(range(6), 3, fillvalue=-1))
     [(0, 1, 2), (3, 4, 5)]
-    >>> list(group(xrange(7), 3, fillvalue=-1))
+    >>> list(group(range(7), 3, fillvalue=-1))
     [(0, 1, 2), (3, 4, 5), (6, -1, -1)]
     """
     iterable = iter(iterable)
     try:
         while True:
             cur = []
-            for i in xrange(N):
+            for i in range(N):
                 cur.append( next(iterable) )
             yield tuple(cur)
     except StopIteration:
@@ -170,7 +169,7 @@ def simple_multiplier(aig, A, B):
 
 def counter(aig, width, en=AIG.get_const1(), rst=AIG.get_const0()):
 
-    latches = [ aig.create_latch() for _ in xrange(width) ]
+    latches = [ aig.create_latch() for _ in range(width) ]
 
     prev_all_ones = aig.get_const1()
 
@@ -231,9 +230,9 @@ def lfsr(aig, width, init=None):
 
     init = [ AIG.INIT_NONDET ] * width if init is None else init
 
-    L = [aig.create_latch(init=init[i]) for i in xrange(width) ]
+    L = [aig.create_latch(init=init[i]) for i in range(width) ]
 
-    for i in xrange(1, width):
+    for i in range(1, width):
         aig.set_next(L[i], L[i-1])
 
     aig.set_next( L[0], aig.large_xor( L[i-1] for i in _lfsr_taps[width] ) )
@@ -248,8 +247,8 @@ if __name__=='__main__':
 
     def make_inputs(aig, widths, names=string.ascii_lowercase):
         X = [ [] for _ in widths ]
-        for w in xrange(max(widths)):
-            for i in xrange(len(widths)):
+        for w in range(max(widths)):
+            for i in range(len(widths)):
                 if w<widths[i]:
                     X[i].append( aig.create_pi('%s[%d]'%(names[i], w)) )
         return [ list(reversed(x)) for x in X ]
@@ -309,7 +308,7 @@ if __name__=='__main__':
         aig.create_pi()
 
         aig.create_po(L[0], po_type=AIG.BAD_STATES)
-        # for i in xrange(n):
+        # for i in range(n):
         #     aig.create_po(L[i], po_type=AIG.BAD_STATES)
 
         write_aiger(aig, aiger)

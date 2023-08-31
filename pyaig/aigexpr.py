@@ -1,7 +1,5 @@
 #!/usr/bin/python
 
-from past.builtins import xrange
-
 from . aig import AIG
 
 
@@ -138,7 +136,7 @@ if __name__=="__main__":
     po = aig.create_po( l.get_f(), po_type=AIG.CONSTRAINT )
     aig.set_po_name(po, "CONSTRAINT2")
     
-    jpos = [ aig.create_po( l.get_f(), "JUSTICE_%d"%i, po_type=AIG.JUSTICE ) for i in xrange(5) ]
+    jpos = [ aig.create_po( l.get_f(), "JUSTICE_%d"%i, po_type=AIG.JUSTICE ) for i in range(5) ]
     aig.create_justice( jpos )
 
     po = aig.create_po( l.get_f(), po_type=AIG.FAIRNESS )

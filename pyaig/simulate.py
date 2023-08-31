@@ -1,6 +1,5 @@
 from __future__ import print_function
 from future.utils import iteritems
-from past.builtins import xrange
 
 from .aig import AIG
 from .aig_io import read_aiger
@@ -80,7 +79,7 @@ def simulate(aig, latch_values, pi_values):
     for l, v in zip(aig.get_latches(), latch_values):
         values[l] = v
         
-    for k in xrange(len(pi_values)):
+    for k in range(len(pi_values)):
 
         for f, v in zip(aig.get_pis(), pi_values[k]):
             values[f] = v
@@ -108,7 +107,7 @@ def print_cex( aig, simulation, symbols):
         
         print("%-*s:"%(maxlen, n), end='')
 
-        for i in xrange(len(simulation)):
+        for i in range(len(simulation)):
             v = simulation[i][f]
             v = str(v) if 0 <= v <= 1 else '?'
             print(v, end='')

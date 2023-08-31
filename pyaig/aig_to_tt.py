@@ -1,5 +1,3 @@
-from past.builtins import xrange
-
 from . aig import AIG
 from . aig_io import read_aiger, write_aiger
 from . truthtables import truth_tables
@@ -13,7 +11,7 @@ class aig_to_tt_map(AIG.fmap):
 def aig_cut_to_tt(m, aig, f, cut):
     """ Build a truth table for a node 'f' and a cut 'cut'.
     >>> aig = AIG()
-    >>> f = aig.conjunction([ aig.create_pi() for _ in xrange(6) ])
+    >>> f = aig.conjunction([ aig.create_pi() for _ in range(6) ])
     >>> m = truth_tables(4)
     >>> print aig_cut_to_tt(m, aig, AIG.negate(f), [3, 5, 6, 9, 10, 12])
     !x0 + x1 + !x2 + !x3
@@ -46,7 +44,7 @@ def aig_cut_to_tt(m, aig, f, cut):
 def aig_to_tt(aig):
     """
     >>> aig = AIG()
-    >>> pis = [ aig.create_pi() for _ in xrange(4) ]
+    >>> pis = [ aig.create_pi() for _ in range(4) ]
     >>> po0 = aig.create_po( aig.conjunction(pis) )
     >>> po1 = aig.create_po( aig.disjunction(pis) )
     >>> m, tts = aig_to_tt(aig)
@@ -58,7 +56,7 @@ def aig_to_tt(aig):
     assert aig.n_buffers() == 0, 'aig_to_tt: AIG contains unexpected buffers'
 
     m = truth_tables(aig.n_pis())
-    M = aig_to_tt_map( m, ((aig.get_pi_by_id(i), m.var(i)) for i in xrange(aig.n_pis())) )
+    M = aig_to_tt_map( m, ((aig.get_pi_by_id(i), m.var(i)) for i in range(aig.n_pis())) )
 
     for f, n in aig.construction_order_deref():
 
@@ -68,7 +66,7 @@ def aig_to_tt(aig):
         M[f] = M[n.get_left()] & M[n.get_right()]
 
     assert (aig.n_pos()%2) == 0
-    return m, [ (M[aig.get_po_fanin(i*2)], M[aig.get_po_fanin(i*2+1)]) for i in xrange(aig.n_pos()/2) ]
+    return m, [ (M[aig.get_po_fanin(i*2)], M[aig.get_po_fanin(i*2+1)]) for i in range(aig.n_pos()/2) ]
 
 
 def aig_to_tt_fname(fname):

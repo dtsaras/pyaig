@@ -7,8 +7,6 @@ import io
 import re
 import subprocess
 
-from past.builtins import xrange
-
 from . aig import AIG
 
 class _aiger_writer(object):
@@ -368,7 +366,7 @@ def read_aiger_file(fin):
     
     vars.append( aig.get_const0() )
     
-    for i in xrange(I):
+    for i in range(I):
         vars.append( aig.create_pi() )
         
     def parse_latch(line):
@@ -389,31 +387,31 @@ def read_aiger_file(fin):
                 
         return (next, init)
         
-    for i in xrange(L):
+    for i in range(L):
         vars.append( aig.create_latch() )
         nexts.append( parse_latch(fin.readline() ) )
 
-    for i in xrange(O):
+    for i in range(O):
         pos_output.append( int( fin.readline() ) )
 
-    for i in xrange(B):
+    for i in range(B):
         pos_bad_states.append( int( fin.readline() ) )
 
-    for i in xrange(C):
+    for i in range(C):
         pos_constraint.append( int( fin.readline() ) )
 
     n_j_pos = []
 
-    for i in xrange(J):
+    for i in range(J):
         n_j_pos.append( int(fin.readline()) )
         
     for n in n_j_pos:
         pos = []
-        for i in xrange(n):
+        for i in range(n):
             pos.append( int( fin.readline() ) )
         pos_justice.append(pos)
 
-    for i in xrange(F):
+    for i in range(F):
         pos_fairness.append( int( fin.readline() ) )
 
     def decode():
@@ -437,13 +435,13 @@ def read_aiger_file(fin):
     def lit(x):
         return aig.negate_if( vars[x>>1], x&0x1)
     
-    for i in xrange(I+L+1, I+L+A+1):
+    for i in range(I+L+1, I+L+A+1):
         d1 = decode()
         d2 = decode()
         g = i<<1
         vars.append( aig.create_and( lit(g-d1), lit(g-d1-d2) ) )
                      
-    for l, v in enumerate(xrange(I+1,I+L+1)):
+    for l, v in enumerate(range(I+1,I+L+1)):
         aig.set_init( vars[v], nexts[l][1] )
         aig.set_next( vars[v], lit(nexts[l][0]) )
         
@@ -680,21 +678,21 @@ def unmarshal_aiger(data):
 
     n_pis = a.getu()
 
-    for i in xrange(n_pis):
+    for i in range(n_pis):
         M[ (n_const + i) << 1 ] = aig.create_pi()
 
     # Latches
 
     n_latches = a.getu()
 
-    for i in xrange(n_latches):
+    for i in range(n_latches):
         M[ (n_const + n_pis + i) << 1 ] = aig.create_latch()
 
     # Gates
 
     n_ands = a.getu()
 
-    for i in xrange(n_ands):
+    for i in range(n_ands):
         f0 = M[ a.getu() >> 1 ]
         f1 = M[ a.getu() ]
         M[ (n_const + n_pis + n_latches + i) << 1 ] = aig.create_and(f0, f1)
@@ -711,7 +709,7 @@ def unmarshal_aiger(data):
     # Properties
 
     n_props = a.getu()
-    for i in xrange(n_props):
+    for i in range(n_props):
         aig.create_po(M[ a.getu() ^ 1 ], po_type=AIG.BAD_STATES)
 
     # Liveness
@@ -722,7 +720,7 @@ def unmarshal_aiger(data):
     fair_total = a.getu()
     cur_justice = []
 
-    for i in xrange(fair_total):
+    for i in range(fair_total):
         u = a.getu()
         if u > 0:
             cur_justice.append( aig.create_po(M[u], po_type=AIG.JUSTICE) )
@@ -733,7 +731,7 @@ def unmarshal_aiger(data):
     # Constraints
 
     n_constr = a.getu()
-    for i in xrange(n_constr):
+    for i in range(n_constr):
         aig.create_po(M[ a.getu() ^ 1 ], po_type=AIG.CONSTRAINT)
 
     return aig
