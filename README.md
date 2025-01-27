@@ -1,8 +1,8 @@
-# PyAIG: A simpe Python AIG and Truth Table package
+# LearnedPyAIG: A simpe Python AIG and Truth Table package
 
 ## AIG
 
-And-Inverter Graph ([AIG](https://en.wikipedia.org/wiki/And-inverter_graph)) is a data structure for logic synthesis and verification. The code follows the [AIGER](http://fmv.jku.at/aiger/) conventions.
+This is a fork from PyAIG repo ([PyAIG](http://github.com/sterin/pyaig)), where LearnedAIG, Learned_Node, and AIGEnv. It simplifies the AIG structure into a LearnedAIG, such that it is simpler for someone to do anything with AIGs while unfamiliar with their representation. Truth-tables are represented as boolean torch tensors, and an AIGEnv that can be used to slowly build an AIG. And-Inverter Graph ([AIG](https://en.wikipedia.org/wiki/And-inverter_graph)) is a data structure for logic synthesis and verification. The code follows the [AIGER](http://fmv.jku.at/aiger/) conventions.
 
 ## Installation
 

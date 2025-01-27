@@ -1,5 +1,7 @@
-from . aig import AIG
+from . aig import AIG, _Node
+from . learned_aig import LearnedAIG, _LearnedNode
 from . aigexpr import aigexpr
+from . aig_env import AIGEnv
 
 from . aig_io import unflatten_aiger, flatten_aiger
 from . aig_io import read_aiger, write_aiger

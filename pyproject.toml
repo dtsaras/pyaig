@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools", "wheel", "torch", "torchrl"]
+build-backend = "setuptools.build_meta"
+
+[tool.python]
+project_root = { dir = "." }
+
+[project]
+name = "pyaig"
+version = "0.0.1"
+authors = [
+  { name="Dimitrios Tsaras", email="dimitris.tsaras@gmail.com" },
+  { name="Baruch Sterin", email="pyaig@bsterin.com" },
+]
+description = "AIGs and Learned AIGs"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+  'click >= 8.1.7',
+  'einops >= 0.8.0',
+  'future >= 0.18.3',
+  'gmpy2 >= 2.1.5',
+  'matplotlib >= 3.8.2',
+  'networkx >= 3.2.1',
+  'pytest >= 8.2.0',
+  'setuptools >= 68.2.2',
+  'torch >= 2.5.0',
+  'torchrl >= 0.6.0',
+]
+
+
+[tool.setuptools.packages.find]
+where = ["pyaig"]
+exclude = ["tests"]

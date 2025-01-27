@@ -4,7 +4,6 @@
 # Simple Python AIG package
 
 from future.utils import iteritems
-import torch
 
 import itertools
 
@@ -159,21 +158,6 @@ class _Node(object):
         elif self._type==_Node.PI:
             type = "PI"
         return "<pyaig.aig._Node _type=%s, _left=%s, _right=%s>"%(type, str(self._left), str(self._right))
-
-
-class _Learned_Node(_Node):
-    def __init__(self, node_type: int, left: int = 0, right: int = 0, truth_table: torch.tensor | None = None):
-        super().__init__(node_type, left, right)
-        self.truth_table = truth_table
-    
-    @property
-    def truth_table(self) -> torch.tensor | None:
-        return self.truth_table
-
-    @truth_table.setter
-    def __truth_table(self, tt: torch.tensor) -> None:
-        self.truth_table = tt
-    
 
 
 class AIG(object):
@@ -1004,43 +988,3 @@ class AIG(object):
 
     def create_bad_states(aig, f, name=None):
         return aig.create_po(aig, f, name=name, po_type=AIG.BAD_STATES)
-
-class Learned_AIG(AIG):
-    
-    # PO types
-    
-    OUTPUT = 0
-    BAD_STATES = 1
-    CONSTRAINT = 2
-    JUSTICE = 3
-    FAIRNESS = 4
-    
-    def __init__(self, n_pis: int, n_pos: int, name: str | None = None):
-        super().__init__(name)
-        self._truth_table_size = 2**(n_pis) * n_pos
-        for i in range(n_pis):
-            self.__create_pi(name=i)
-            
-        for i in range(n_pos):
-            self.create_po(f=-1, name=-(i+1))
-            
-    @classmethod
-    def __create_pi(self, name: int) -> int:
-        pi_id = len(self._pis)
-        n = _Learned_Node.make_pi(pi_id)
-        node_pos = len(self._nodes)<<1
-        
-        self._nodes.append(n)
-        self._pis.append( node_pos )
-        self.set_name(node_pos, name)
-        self.create_truth_table()
-
-        return node_pos
-
-    @classmethod
-    def __create_po(self, f=0, name=None, po_type=OUTPUT ):
-        po_id = len(self._pos)
-        self._pos.append( (f, po_type) )
-        self.set_po_name(po_id, name)
-        
-        return po_id
