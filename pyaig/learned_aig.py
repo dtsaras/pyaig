@@ -1,13 +1,14 @@
 from __future__ import annotations
-from pyaig import AIG, _Node, AIGEnv
 from typing import Optional, List, Dict, Tuple, Iterator
 from collections import deque
 import networkx as nx
 import torch
 import random
 
+from . aig import AIG, _Node
+from . aig_env import AIGEnv
 
-class _Learned_Node(_Node):
+class LearnedNode(_Node):
     CONST0 = 0
     PI = 1
     # LATCH = 2
@@ -19,8 +20,8 @@ class _Learned_Node(_Node):
         self,
         node_type: int,
         node_id: int,
-        left: _Learned_Node | None = None,
-        right: _Learned_Node | None = None,
+        left: LearnedNode | None = None,
+        right: LearnedNode | None = None,
         left_edge_type: int | None = None,
         right_edge_type: int | None = None,
         truth_table: torch.Tensor | None = None,
@@ -51,11 +52,11 @@ class _Learned_Node(_Node):
         return self._node_id
 
     @property
-    def left(self) -> _Learned_Node | None:
+    def left(self) -> LearnedNode | None:
         return self._left
 
     @property
-    def right(self) -> _Learned_Node | None:
+    def right(self) -> LearnedNode | None:
         return self._right
 
     @property
@@ -67,11 +68,11 @@ class _Learned_Node(_Node):
         return self._right_edge_type
 
     @property
-    def fanout_type(self) -> Dict[_Learned_Node, int]:
+    def fanout_type(self) -> Dict[LearnedNode, int]:
         return self._fanout_type
 
     @property
-    def fanout_id_to_object(self) -> Dict[int, _Learned_Node]:
+    def fanout_id_to_object(self) -> Dict[int, LearnedNode]:
         return self._fanout_id_to_object
 
     @property
@@ -87,12 +88,12 @@ class _Learned_Node(_Node):
         self._node_id = node_id
 
     @left.setter
-    def left(self, left: _Learned_Node) -> None:
+    def left(self, left: LearnedNode) -> None:
         self._left = left
         self.calculate_truth_table()
 
     @right.setter
-    def right(self, right: _Learned_Node) -> None:
+    def right(self, right: LearnedNode) -> None:
         self._right = right
         self.calculate_truth_table()
 
@@ -113,32 +114,32 @@ class _Learned_Node(_Node):
     @staticmethod
     def make_po(
         node_id: int,
-        input: _Learned_Node | None = None,
+        input: LearnedNode | None = None,
         edge_type: int | None = None,
         truth_table: torch.Tensor | None = None,
-    ) -> _Learned_Node:
-        return _Learned_Node(
-            _Learned_Node.PO, node_id, input, input, edge_type, edge_type, truth_table
+    ) -> LearnedNode:
+        return LearnedNode(
+            LearnedNode.PO, node_id, input, input, edge_type, edge_type, truth_table
         )
 
     @staticmethod
     def make_pi(
         node_id: int, truth_table: Optional[torch.Tensor] = None
-    ) -> _Learned_Node:
-        return _Learned_Node(
-            _Learned_Node.PI, node_id, None, None, None, None, truth_table
+    ) -> LearnedNode:
+        return LearnedNode(
+            LearnedNode.PI, node_id, None, None, None, None, truth_table
         )
 
     @staticmethod
     def make_and(
         node_id: int,
-        left: _Learned_Node,
-        right: _Learned_Node,
+        left: LearnedNode,
+        right: LearnedNode,
         left_edge_type: int,
         right_edge_type: int,
-    ) -> _Learned_Node:
-        node = _Learned_Node(
-            _Learned_Node.AND,
+    ) -> LearnedNode:
+        node = LearnedNode(
+            LearnedNode.AND,
             node_id,
             left,
             right,
@@ -151,15 +152,15 @@ class _Learned_Node(_Node):
         return node
 
     @staticmethod
-    def make_const0(truth_table_size: int | None = None) -> _Learned_Node:
+    def make_const0(truth_table_size: int | None = None) -> LearnedNode:
         truth_table = None
         if truth_table_size != None:
             truth_table = torch.zeros(truth_table_size, dtype=bool)
-        return _Learned_Node(
-            _Learned_Node.CONST0, 0, None, None, None, None, truth_table
+        return LearnedNode(
+            LearnedNode.CONST0, 0, None, None, None, None, truth_table
         )
 
-    def set_left_edge(self, left: _Learned_Node, left_edge_type: int) -> None:
+    def set_left_edge(self, left: LearnedNode, left_edge_type: int) -> None:
         self.left = left
         self.left_edge_type = left_edge_type
         self.swap_edges()
@@ -168,7 +169,7 @@ class _Learned_Node(_Node):
             self.right_edge_type = left_edge_type
         self.update_level()
 
-    def set_right_edge(self, right: _Learned_Node, right_edge_type: int) -> None:
+    def set_right_edge(self, right: LearnedNode, right_edge_type: int) -> None:
         self.right = right
         self.right_edge_type = right_edge_type
         self.swap_edges()
@@ -177,7 +178,7 @@ class _Learned_Node(_Node):
             self.left_edge_type = right_edge_type
         self.update_level()
 
-    def update_edge_type(self, node: _Learned_Node, edge_type: int) -> None:
+    def update_edge_type(self, node: LearnedNode, edge_type: int) -> None:
         if node == self.left:
             self.left_edge_type = edge_type
         elif node == self.right:
@@ -206,14 +207,14 @@ class _Learned_Node(_Node):
         if self.right != None:
             return self.right.node_id
 
-    def add_fanout(self, target: _Learned_Node, edge_type: int) -> None:
+    def add_fanout(self, target: LearnedNode, edge_type: int) -> None:
         self._fanout_type[target] = edge_type
         self._fanout_id_to_object[target.node_id] = target
 
     def fanout_size(self) -> int:
         return len(self._fanout_id_to_object)
 
-    def delete_fanout(self, node: _Learned_Node | int) -> None:
+    def delete_fanout(self, node: LearnedNode | int) -> None:
         node_id = 0
         if isinstance(node, int):
             node_id = node
@@ -234,7 +235,7 @@ class _Learned_Node(_Node):
                 or self.right.truth_table == None
             ):
                 self._truth_table = None
-            elif self._type == _Learned_Node.PO and force:
+            elif self._type == LearnedNode.PO and force:
                 if self.left_edge_type == -1:
                     self._truth_table = ~self.left.truth_table
                 else:
@@ -255,7 +256,7 @@ class _Learned_Node(_Node):
         if self.right != None and self.right.level + 1 > self._level:
             self._level = self.right.level + 1
 
-    def __getitem__(self, node: _Learned_Node | int):
+    def __getitem__(self, node: LearnedNode | int):
         if isinstance(node, int):
             return self._fanout_id_to_object[node]
         else:
@@ -265,7 +266,7 @@ class _Learned_Node(_Node):
         self._fanout_type[node] = edge_type
 
     def __repr__(self):
-        if self._type == _Learned_Node.AND:
+        if self._type == LearnedNode.AND:
             type = "AND"
         # elif self._type==_Node.BUFFER:
         #     type = "BUFFER"
@@ -273,18 +274,18 @@ class _Learned_Node(_Node):
             type = "CONST0"
         # elif self._type==_Node.LATCH:
         #     type = "LATCH"
-        elif self._type == _Learned_Node.PI:
+        elif self._type == LearnedNode.PI:
             type = "PI"
-            return "<pyaig.aig._Learned_Node _type=%s, _node_id=%s>" % (
+            return "<pyaig.aig.LearnedNode _type=%s, _node_id=%s>" % (
                 type,
                 str(self.node_id),
             )
-        elif self._type == _Learned_Node.PO:
+        elif self._type == LearnedNode.PO:
             type = "PO"
         else:
             type = "UNKNOWN"
         return (
-            "<pyaig.aig._Learned_Node _type=%s, _node_id=%s, _left=%s, _right=%s>"
+            "<pyaig.aig.LearnedNode _type=%s, _node_id=%s, _left=%s, _right=%s>"
             % (
                 type,
                 str(self.node_id),
@@ -293,19 +294,19 @@ class _Learned_Node(_Node):
             )
         )
 
-    def __iter__(self) -> Iterator[_Learned_Node]:
+    def __iter__(self) -> Iterator[LearnedNode]:
         self._keys = list(self._fanout_id_to_object.keys())
         self._idx = 0
         return self
 
-    def __next__(self) -> _Learned_Node:
+    def __next__(self) -> LearnedNode:
         if self._idx == len(self._keys):
             raise StopIteration
         self._idx += 1
         return self._keys[self._idx - 1]
 
 
-class Learned_AIG(AIG):
+class LearnedAIG(AIG):
     def __init__(
         self,
         n_pis: int,
@@ -319,10 +320,10 @@ class Learned_AIG(AIG):
     ) -> None:
 
         super().__init__(name)
-        self._nodes: List[_Learned_Node] = []
-        self._pis: List[_Learned_Node] = []
-        self._pos: List[_Learned_Node] = []
-        self._id_to_object: Dict[int, _Learned_Node] = {}
+        self._nodes: List[LearnedNode] = []
+        self._pis: List[LearnedNode] = []
+        self._pos: List[LearnedNode] = []
+        self._id_to_object: Dict[int, LearnedNode] = {}
         self._node_truth_tables: List[torch.Tensor] = []
         self._po_truth_tables: List[torch.Tensor] = []
         self._next_available_node_id: int = 0
@@ -365,14 +366,14 @@ class Learned_AIG(AIG):
 
     def __create_pi(
         self, name: int | str, truth_table: torch.Tensor | int | None = None
-    ) -> _Learned_Node:
+    ) -> LearnedNode:
         pi_id = self._next_available_node_id
         self._next_available_node_id += 1
         if truth_table != None and self._truth_table_size != None:
             truth_table = self.create_truth_table(
                 bin=truth_table, bits=self._truth_table_size
             )
-        node = _Learned_Node.make_pi(node_id=pi_id, truth_table=truth_table)
+        node = LearnedNode.make_pi(node_id=pi_id, truth_table=truth_table)
         self._id_to_object[pi_id] = node
         self._nodes.append(node)
         self._pis.append(node)
@@ -382,9 +383,9 @@ class Learned_AIG(AIG):
 
     def __create_po(
         self, name: int | str, truth_table: torch.Tensor | None
-    ) -> _Learned_Node:
+    ) -> LearnedNode:
         po_id = -(len(self._pos) + 1)
-        node = _Learned_Node.make_po(
+        node = LearnedNode.make_po(
             node_id=po_id, input=None, edge_type=None, truth_table=truth_table
         )
         self._id_to_object[po_id] = node
@@ -393,24 +394,24 @@ class Learned_AIG(AIG):
 
         return node
 
-    def __create_const(self) -> _Learned_Node:
+    def __create_const(self) -> LearnedNode:
         pi_id = self._next_available_node_id
         self._next_available_node_id += 1
         size = None
         if self._instantiated_truth_tables:
             size = self._truth_table_size
-        node = _Learned_Node.make_const0(size)
+        node = LearnedNode.make_const0(size)
         self._id_to_object[pi_id] = node
         self._nodes.append(node)
         return node
 
     def create_and(
         self,
-        left: _Learned_Node | int,
-        right: _Learned_Node | int,
+        left: LearnedNode | int,
+        right: LearnedNode | int,
         left_edge_type: int,
         right_edge_type: int,
-    ) -> _Learned_Node:
+    ) -> LearnedNode:
         if isinstance(left, int):
             left = self._id_to_object[left]
         if isinstance(right, int):
@@ -420,13 +421,13 @@ class Learned_AIG(AIG):
             left, right = right, left
             left_edge_type, right_edge_type = right_edge_type, left_edge_type
 
-        key = (_Learned_Node.AND, id(left), id(right), left_edge_type, right_edge_type)
+        key = (LearnedNode.AND, id(left), id(right), left_edge_type, right_edge_type)
 
         if key in self._strash:
             return self._strash[key]
         node_id = self._next_available_node_id
         self._next_available_node_id += 1
-        node = _Learned_Node.make_and(
+        node = LearnedNode.make_and(
             node_id, left, right, left_edge_type, right_edge_type
         )
         self._nodes.append(node)
@@ -438,7 +439,7 @@ class Learned_AIG(AIG):
         return node
 
     def set_left_edge(
-        self, source: _Learned_Node | int, target: _Learned_Node | int, edge_type: int
+        self, source: LearnedNode | int, target: LearnedNode | int, edge_type: int
     ) -> None:
         if isinstance(source, int):
             source = self._id_to_object[source]
@@ -448,7 +449,7 @@ class Learned_AIG(AIG):
         source.add_fanout(target, edge_type)
 
     def set_right_edge(
-        self, source: _Learned_Node | int, target: _Learned_Node | int, edge_type: int
+        self, source: LearnedNode | int, target: LearnedNode | int, edge_type: int
     ) -> None:
         if isinstance(source, int):
             source = self._id_to_object[source]
@@ -458,7 +459,7 @@ class Learned_AIG(AIG):
         source.add_fanout(target, edge_type)
 
     def set_po_edge(
-        self, source: _Learned_Node | int, po: _Learned_Node | int, edge_type: int
+        self, source: LearnedNode | int, po: LearnedNode | int, edge_type: int
     ) -> None:
         if isinstance(source, int):
             source = self._id_to_object[source]
@@ -537,9 +538,9 @@ class Learned_AIG(AIG):
         pi_names: list[str] | None = None,
         po_names: list[str] | None = None,
         name: str | None = None,
-    ) -> Learned_AIG:
+    ) -> LearnedAIG:
 
-        aig = Learned_AIG(
+        aig = LearnedAIG(
             n_pis=n_pis,
             n_pos=n_pos,
             truth_tables=truth_tables,
@@ -571,8 +572,8 @@ class Learned_AIG(AIG):
         return aig
 
     @staticmethod
-    def from_aig_env(aig_env: AIGEnv) -> Learned_AIG:
-        aig = Learned_AIG(
+    def from_aig_env(aig_env: AIGEnv) -> LearnedAIG:
+        aig = LearnedAIG(
             n_pis=int(aig_env.state["num_inputs"].item()),
             n_pos=int(aig_env.n_pos.item()),
             truth_tables=[aig_env.state["target"]],
@@ -633,8 +634,8 @@ class Learned_AIG(AIG):
         G.add_nodes_from(range(-1, -(len(self._pos) + 1), -1), node_type="PO")
         for node in self._nodes:
             if (
-                node.node_type != _Learned_Node.PI
-                and node.node_type != _Learned_Node.CONST0
+                node.node_type != LearnedNode.PI
+                and node.node_type != LearnedNode.CONST0
             ):
                 G.add_edge(
                     node.left.node_id, node.node_id, edge_type=node.left_edge_type
@@ -715,8 +716,8 @@ class Learned_AIG(AIG):
         self._name_to_id[name] = node_id
         self._id_to_name[node_id] = name
 
-    def get_name(self, node: int | _Learned_Node) -> str:
-        if isinstance(node, _Learned_Node):
+    def get_name(self, node: int | LearnedNode) -> str:
+        if isinstance(node, LearnedNode):
             return self._id_to_name[node.node_id]
         return self._id_to_name[node]
 
@@ -738,14 +739,14 @@ class Learned_AIG(AIG):
     def get_pos(self) -> tuple[int, int, int]:
         return ((po.node_id, po.left.node_id, po.node_type) for po in self._pos)
 
-    def __getitem__(self, node_id: int) -> _Learned_Node:
+    def __getitem__(self, node_id: int) -> LearnedNode:
         return self._id_to_object[node_id]
 
-    def __iter__(self) -> Iterator[_Learned_Node]:
+    def __iter__(self) -> Iterator[LearnedNode]:
         self._idx = 0
         return self
 
-    def __next__(self) -> _Learned_Node:
+    def __next__(self) -> LearnedNode:
         if self._idx == len(self._nodes):
             raise StopIteration
         self._idx += 1
@@ -771,7 +772,7 @@ class Learned_AIG(AIG):
             skip_truth_tables = True
 
         # print("Num PIs:", I, "-- Num POS:", O, "Total:", I+O)
-        new_aig = Learned_AIG(
+        new_aig = LearnedAIG(
             n_pis=I,
             n_pos=O,
             truth_tables=None,
@@ -807,11 +808,11 @@ class Learned_AIG(AIG):
             init = 0
             if len(tokens) == 2:
                 if tokens[1] == "0":
-                    init = Learned_AIG.INIT_ZERO
+                    init = LearnedAIG.INIT_ZERO
                 if tokens[1] == "1":
-                    init = Learned_AIG.INIT_ONE
+                    init = LearnedAIG.INIT_ONE
                 else:
-                    init = Learned_AIG.INIT_NONDET
+                    init = LearnedAIG.INIT_NONDET
             return (next, init)
 
         for i in range(L):  # Obsolete
@@ -983,7 +984,7 @@ class Learned_AIG(AIG):
         #     aiger_i += 1
 
         for n in self._nodes:  # and gates and buffers
-            if n.node_type == _Learned_Node.AND:
+            if n.node_type == LearnedNode.AND:
                 map_aiger[n.node_id] = aiger_i << 1
                 aiger_i += 1
 
@@ -1005,13 +1006,13 @@ class Learned_AIG(AIG):
 
         I = self.n_pis()
         L = self.n_latches()
-        # O = self.n_pos_by_type(Learned_AIG.OUTPUT)
+        # O = self.n_pos_by_type(LearnedAIG.OUTPUT)
         O = len(self._pos)
         A = self.n_nonterminals()
-        B = self.n_pos_by_type(Learned_AIG.BAD_STATES)
-        C = self.n_pos_by_type(Learned_AIG.CONSTRAINT)
+        B = self.n_pos_by_type(LearnedAIG.BAD_STATES)
+        C = self.n_pos_by_type(LearnedAIG.CONSTRAINT)
         J = self.n_justice()
-        F = self.n_pos_by_type(Learned_AIG.FAIRNESS)
+        F = self.n_pos_by_type(LearnedAIG.FAIRNESS)
 
         M = I + L + A
         _bytes.extend(b"aig %d %d %d %d %d" % (M, I, L, O, A))
@@ -1034,12 +1035,12 @@ class Learned_AIG(AIG):
         # writer = _aiger_writer(
         #     self.n_pis(),
         #     self.n_latches(),
-        #     self.n_pos_by_type(Learned_AIG.OUTPUT),
+        #     self.n_pos_by_type(LearnedAIG.OUTPUT),
         #     self.n_nonterminals(),
-        #     self.n_pos_by_type(Learned_AIG.BAD_STATES),
-        #     self.n_pos_by_type(Learned_AIG.CONSTRAINT),
+        #     self.n_pos_by_type(LearnedAIG.BAD_STATES),
+        #     self.n_pos_by_type(LearnedAIG.CONSTRAINT),
         #     self.n_justice(),
-        #     self.n_pos_by_type(Learned_AIG.FAIRNESS),
+        #     self.n_pos_by_type(LearnedAIG.FAIRNESS),
         #     )
 
         # writer.write_inputs()
@@ -1054,13 +1055,13 @@ class Learned_AIG(AIG):
                 new_po_id_source += 1
             _bytes.extend(b"%d\n" % new_po_id_source)
 
-        # for po in self.get_po_fanins_by_type(Learned_AIG.OUTPUT):
+        # for po in self.get_po_fanins_by_type(LearnedAIG.OUTPUT):
         #     writer.write_po(aiger_lit(po))
 
-        # for po in self.get_po_fanins_by_type(Learned_AIG.BAD_STATES): #Obsolete
+        # for po in self.get_po_fanins_by_type(LearnedAIG.BAD_STATES): #Obsolete
         #     writer.write_po(aiger_lit(po))
 
-        # for po in self.get_po_fanins_by_type(Learned_AIG.CONSTRAINT): #Obsolete
+        # for po in self.get_po_fanins_by_type(LearnedAIG.CONSTRAINT): #Obsolete
         #     writer.write_po(aiger_lit(po))
 
         # for _, j_pos in self.get_justice_properties(): #Obsolete
@@ -1070,7 +1071,7 @@ class Learned_AIG(AIG):
         #     for po_id in j_pos:
         #         writer.write_po( aiger_lit( self.get_po_fanin(po_id) ) )
 
-        # for po in self.get_po_fanins_by_type(Learned_AIG.FAIRNESS): #Obsolete
+        # for po in self.get_po_fanins_by_type(LearnedAIG.FAIRNESS): #Obsolete
         #     writer.write_po(aiger_lit(po))
 
         # for g in self.get_nonterminals(): #These are the ids of the nodes
@@ -1091,7 +1092,7 @@ class Learned_AIG(AIG):
         #     writer.write_and(al, ar)
 
         for n in self._nodes:
-            if n.node_type == _Learned_Node.AND:
+            if n.node_type == LearnedNode.AND:
                 al = map_aiger[n.left.node_id]
                 ar = map_aiger[n.right.node_id]
 
@@ -1268,7 +1269,7 @@ class Learned_AIG(AIG):
 
     def create_and_from_tensor(
         self, action: torch.Tensor, temperature: float = 0.000001
-    ) -> _Learned_Node:
+    ) -> LearnedNode:
         edge_type = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
 
         probabilities = torch.nn.functional.softmax(
@@ -1286,7 +1287,7 @@ class Learned_AIG(AIG):
             left.item(), right.item(), left_edge_type, right_edge_type
         )
 
-    def create_and_from_tensor_max(self, action: torch.Tensor) -> _Learned_Node:
+    def create_and_from_tensor_max(self, action: torch.Tensor) -> LearnedNode:
         edge_type = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
         idx = (action.squeeze() == torch.max(action)).nonzero().squeeze()
         if len(idx.shape) == 2:
@@ -1333,7 +1334,7 @@ class Learned_AIG(AIG):
                 new_nodes.append(node)
         self._nodes = new_nodes
 
-    def delete_node(self, node: _Learned_Node, deleted_nodes: dict[int, int]) -> None:
+    def delete_node(self, node: LearnedNode, deleted_nodes: dict[int, int]) -> None:
         deleted_nodes[node.node_id] = 1
         left = node.left
         right = node.right

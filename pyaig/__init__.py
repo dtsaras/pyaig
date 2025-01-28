@@ -1,5 +1,5 @@
 from . aig import AIG, _Node
-from . learned_aig import LearnedAIG, _LearnedNode
+from . learned_aig import LearnedAIG, LearnedNode
 from . aigexpr import aigexpr
 from . aig_env import AIGEnv
 
