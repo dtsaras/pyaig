@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "wheel", "torch", "torchrl"]
+requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.python]
@@ -25,11 +25,10 @@ dependencies = [
   'networkx >= 3.2.1',
   'pytest >= 8.2.0',
   'setuptools >= 68.2.2',
-  'torch >= 2.5.0',
-  'torchrl >= 0.6.0',
+  'torch >= 2.6.0',
+  'torchrl >= 0.7.0',
 ]
 
-
-[tool.setuptools.packages.find]
-where = ["pyaig"]
-exclude = ["tests"]
+[tool.setuptools]
+packages = ["pyaig"]
+package-dir = { "" = "." }
