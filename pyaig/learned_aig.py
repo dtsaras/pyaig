@@ -9,6 +9,12 @@ from . aig import AIG, _Node
 from . aig_env import AIGEnv
 
 class LearnedNode(_Node):
+    """A class to represent a node in a learned AIG. It extends the `_Node` class from the `aig` module.
+    It simplifies the representation of the original implementation and adds some useful methods and native truth table simulation with PyTorch.
+
+    Returns:
+        _type_: LearnedNode
+    """    
     CONST0 = 0
     PI = 1
     # LATCH = 2
@@ -41,74 +47,166 @@ class LearnedNode(_Node):
 
     @property
     def node_type(self) -> int:
+        """Get the node type
+
+        Returns:
+            int: 0 for CONST0, 1 for PI, 3 for AND, 5 for PO
+        """        
         return self._type
 
     @property
-    def truth_table(self) -> torch.Tensor | None:
+    def truth_table(self) -> torch.BoolTensor:
+        """Returns the truth table associated with the node
+
+        Returns:
+            torch.BoolTensor: the truth table
+        """        
         return self._truth_table
 
     @property
     def node_id(self) -> int:
+        """Get the node id associated with the node in the AIG
+
+        Returns:
+            int: the node id
+        """        
         return self._node_id
 
     @property
     def left(self) -> LearnedNode | None:
+        """The left parent of the node. If the node is a PI, then the left parent is `None`
+
+        Returns:
+            LearnedNode | None: The left parent of the node
+        """        
         return self._left
 
     @property
     def right(self) -> LearnedNode | None:
+        """The right parent of the node. If the node is a PI, then the right parent is `None`
+
+        Returns:
+            LearnedNode | None: The right parent of the node
+        """   
         return self._right
 
     @property
     def left_edge_type(self) -> int | None:
+        """The type of edge connecting the left parent to the node. 1 for normal edge, -1 for negated edge.
+        If the node is a PI, then the left edge type is `None`
+
+        Returns:
+            int | None: The type of edge connecting the left parent to the node
+        """        
         return self._left_edge_type
 
     @property
     def right_edge_type(self) -> int | None:
+        """The type of edge connecting the right parent to the node. 1 for normal edge, -1 for negated edge.
+        If the node is a PI, then the right edge type is `None`
+
+        Returns:
+            int | None: The type of edge connecting the right parent to the node
+        """  
         return self._right_edge_type
 
     @property
     def fanout_type(self) -> Dict[LearnedNode, int]:
+        """It's a `dict` that associated  the edge type connecting the node to its fanouts (children).
+        1 for normal edge, -1 for negated edge.
+
+        Returns:
+            Dict[LearnedNode, int]: The dictionary that contains the children and their edge types
+        """
         return self._fanout_type
 
     @property
     def fanout_id_to_object(self) -> Dict[int, LearnedNode]:
+        """It's a `dict` that associates the node id of the fanouts (children) to the respective node object without needing to use the AIG object.
+
+        Returns:
+            Dict[int, LearnedNode]: The dictionary that contains the node id of the children and their respective node
+        """        
         return self._fanout_id_to_object
 
     @property
     def level(self) -> int:
+        """This is the level of the node in the AIG. The level of a node is the maximum level of its parents plus 1.
+
+        Returns:
+            int: The level of the node
+        """        
         return self._level
 
     @truth_table.setter
-    def truth_table(self, truth_table: torch.Tensor) -> None:
+    def truth_table(self, truth_table: torch.BoolTensor) -> None:
+        """The setter method for assigning a truth table to the node.
+
+        Args:
+            truth_table (torch.BoolTensor): The truth table to be assigned to the node
+        """        
         self._truth_table = truth_table
 
     @node_id.setter
     def node_id(self, node_id: int) -> None:
+        """The setter method for assigning a node id to the node.
+
+        Args:
+            node_id (int): The node id to be assigned to the node
+        """        
         self._node_id = node_id
 
     @left.setter
     def left(self, left: LearnedNode) -> None:
+        """The setter method for assigning a left parent to the node. 
+
+        Args:
+            left (LearnedNode): The node to be assigned as the left parent
+        """        
         self._left = left
-        self.calculate_truth_table()
+        if left.has_truth_table():
+            self.calculate_truth_table()
 
     @right.setter
     def right(self, right: LearnedNode) -> None:
+        """The setter method for assigning a right parent to the node
+
+        Args:
+            right (LearnedNode): The node to be assigned as the right parent
+        """    
         self._right = right
-        self.calculate_truth_table()
+        if right.has_truth_table():
+            self.calculate_truth_table()
 
     @left_edge_type.setter
     def left_edge_type(self, left_edge_type: int) -> None:
+        """The setter method for assigning the edge type connecting the left parent and the node.
+
+        Args:
+            left_edge_type (int): The edge type to be assigned. 1 for normal edge, -1 for negated edge.
+        """   
         self._left_edge_type = left_edge_type
-        self.calculate_truth_table()
+        if self._left.has_truth_table():
+            self.calculate_truth_table()
 
     @right_edge_type.setter
     def right_edge_type(self, right_edge_type: int) -> None:
+        """The setter method for assigning the edge type connecting the right parent and the node.
+
+        Args:
+            right_edge_type (int): The edge type to be assigned. 1 for normal edge, -1 for negated edge
+        """        
         self._right_edge_type = right_edge_type
-        self.calculate_truth_table()
+        if self._right.has_truth_table():
+            self.calculate_truth_table()
 
     @level.setter
     def level(self, level: int) -> None:
+        """The setter method for assigning the level of the node in the AIG. 
+
+        Args:
+            level (int): The level of the node
+        """        
         self._level = level
 
     @staticmethod
@@ -116,16 +214,36 @@ class LearnedNode(_Node):
         node_id: int,
         input: LearnedNode | None = None,
         edge_type: int | None = None,
-        truth_table: torch.Tensor | None = None,
+        truth_table: torch.BoolTensor | None = None,
     ) -> LearnedNode:
+        """A static method to create a PO node
+
+        Args:
+            node_id (int): The node id of the PO node (usually negative)
+            input (LearnedNode | None, optional): The node where the PO originates from. Defaults to None and can be set later.
+            edge_type (int | None, optional): The type of edge to connect the input node and PO with. Defaults to None and can be set later.
+            truth_table (torch.BoolTensor | None, optional): The truth table associated with the PO. Defaults to None and can be set later.
+
+        Returns:
+            LearnedNode: The newly created PO node
+        """        
         return LearnedNode(
             LearnedNode.PO, node_id, input, input, edge_type, edge_type, truth_table
         )
 
     @staticmethod
     def make_pi(
-        node_id: int, truth_table: Optional[torch.Tensor] = None
+        node_id: int, truth_table: torch.BoolTensor | None = None
     ) -> LearnedNode:
+        """A static method to create a PI node
+
+        Args:
+            node_id (int): The node id of the PI node
+            truth_table (torch.BoolTensor | None, optional): The truth table associated with the PI. Defaults to None.
+
+        Returns:
+            LearnedNode: The newly created PI node
+        """        
         return LearnedNode(
             LearnedNode.PI, node_id, None, None, None, None, truth_table
         )
@@ -138,6 +256,18 @@ class LearnedNode(_Node):
         left_edge_type: int,
         right_edge_type: int,
     ) -> LearnedNode:
+        """A static method to create an AND node
+
+        Args:
+            node_id (int): The node id of the AND node
+            left (LearnedNode): The left parent of the AND node
+            right (LearnedNode): The right parent of the AND node
+            left_edge_type (int): The type of edge connecting the left parent to the AND node. 1 for normal edge, -1 for negated edge
+            right_edge_type (int): The type of edge connecting the right parent to the AND node. 1 for normal edge, -1 for negated edge
+
+        Returns:
+            LearnedNode: The newly created AND node
+        """        
         node = LearnedNode(
             LearnedNode.AND,
             node_id,
@@ -147,12 +277,21 @@ class LearnedNode(_Node):
             right_edge_type,
             None,
         )
-        node.calculate_truth_table()
+        if left.has_truth_table() and right.has_truth_table():
+            node.calculate_truth_table()
         node.update_level()
         return node
 
     @staticmethod
     def make_const0(truth_table_size: int | None = None) -> LearnedNode:
+        """A static method to create a CONST0 node
+
+        Args:
+            truth_table_size (int | None, optional): The number of entries for the truth table. Defaults to None.
+
+        Returns:
+            LearnedNode: The newly created CONST0 node
+        """        
         truth_table = None
         if truth_table_size != None:
             truth_table = torch.zeros(truth_table_size, dtype=bool)
@@ -161,6 +300,13 @@ class LearnedNode(_Node):
         )
 
     def set_left_edge(self, left: LearnedNode, left_edge_type: int) -> None:
+        """A safe method for setting the left parent of the node and the edge type connecting them.
+        It also updates the level of the node and ensures that the node id of the left parent is less than the node id of the right parent.
+
+        Args:
+            left (LearnedNode): The parent node to be set as the left parent
+            left_edge_type (int): The type of edge connecting the left parent to the node. 1 for normal edge, -1 for negated edge
+        """        
         self.left = left
         self.left_edge_type = left_edge_type
         self.swap_edges()
@@ -170,6 +316,13 @@ class LearnedNode(_Node):
         self.update_level()
 
     def set_right_edge(self, right: LearnedNode, right_edge_type: int) -> None:
+        """A safe method for setting the right parent of the node and the edge type connecting them.
+        It also updates the level of the node and ensures that the node id of the right parent is greater than the node id of the left parent.
+
+        Args:
+            right (LearnedNode): The parent node to be set as the right parent
+            right_edge_type (int): The type of edge connecting the right parent to the node. 1 for normal edge, -1 for negated edge
+        """        
         self.right = right
         self.right_edge_type = right_edge_type
         self.swap_edges()
@@ -179,6 +332,12 @@ class LearnedNode(_Node):
         self.update_level()
 
     def update_edge_type(self, node: LearnedNode, edge_type: int) -> None:
+        """Given the parent node and the edge type, this method updates the edge type connecting the parent node to the current node.
+
+        Args:
+            node (LearnedNode): The parent node either left or right parent
+            edge_type (int): The new edge type to be assigned
+        """        
         if node == self.left:
             self.left_edge_type = edge_type
         elif node == self.right:
@@ -187,6 +346,9 @@ class LearnedNode(_Node):
             self._fanout_type[node] = edge_type
 
     def swap_edges(self) -> None:
+        """This method ensures that the node id of the left parent is less than the node id of the right parent.
+        If the node id of the left parent is greater than the node id of the right parent, then the left and right parents are swapped.
+        """        
         if (
             self.right != None
             and self.left != None
@@ -200,21 +362,49 @@ class LearnedNode(_Node):
             )
 
     def get_left(self) -> int | None:
+        """A method to get the node id of the left parent of the node.
+        If the node is a PI, then the left parent is `None`
+
+        Returns:
+            int | None: The node id of the left parent
+        """        
         if self.left != None:
             return self.left.node_id
 
     def get_right(self) -> int | None:
+        """A method to get the node id of the right parent of the node.
+        If the node is a PI, then the right parent is `None`
+
+        Returns:
+            int | None: The node id of the right parent
+        """        
         if self.right != None:
             return self.right.node_id
 
     def add_fanout(self, target: LearnedNode, edge_type: int) -> None:
+        """A method to add a fanout to the node. It associates the target node with the edge type connecting the target node to the current node.
+
+        Args:
+            target (LearnedNode): The node to be added as a fanout
+            edge_type (int): The type of edge connecting the target node to the current node. 1 for normal edge, -1 for negated edge
+        """        
         self._fanout_type[target] = edge_type
         self._fanout_id_to_object[target.node_id] = target
 
     def fanout_size(self) -> int:
+        """A method to get the number of fanouts of the node
+
+        Returns:
+            int: The number of fanouts of the node
+        """        
         return len(self._fanout_id_to_object)
 
     def delete_fanout(self, node: LearnedNode | int) -> None:
+        """A method to delete a fanout from the node. It removes the target node from the fanouts of the current node.
+
+        Args:
+            node (LearnedNode | int): The node to be removed from the fanouts of the current node
+        """        
         node_id = 0
         if isinstance(node, int):
             node_id = node
@@ -224,15 +414,34 @@ class LearnedNode(_Node):
         del self._fanout_id_to_object[node_id]
         del self._fanout_type[node]
 
+    def has_truth_table(self) -> bool:
+        """Checks if the node has a truth table. 
+
+        Returns:
+            bool: True if the node has a truth table assigned, otherwise False
+        """        
+        return self._truth_table != None
+
     def calculate_truth_table(self, force: bool = False) -> None:
+        """A method to calculate the truth table of the node.
+        If the node is a PI, then the truth table has to be assigned to the node.
+        If the node is a CONST0, then the truth table is all zeros.
+        If the node is an AND node, then the truth table is calculated based on the left and right parents.
+        If the node is a PO node, then the truth table is calculated based on the input node.
+
+        Args:
+            force (bool, optional): It forces the recomputation of the truth table. Defaults to False.
+        """        
         if not self.is_pi():
+            if not self.left.has_truth_table():
+                self.left.calculate_truth_table(force=force)
+            if not self.right.has_truth_table():
+                self.right.calculate_truth_table(force=force)
             if (
                 self.left == None
                 or self.right == None
                 or self.right_edge_type == None
                 or self.left_edge_type == None
-                or self.left.truth_table == None
-                or self.right.truth_table == None
             ):
                 self._truth_table = None
             elif self._type == LearnedNode.PO and force:
@@ -251,21 +460,43 @@ class LearnedNode(_Node):
                     self._truth_table = self.left.truth_table & self.right.truth_table
 
     def update_level(self):
+        """A method to update the level of the node in the AIG.
+        The level of a node is the maximum level of its parents plus 1.
+        """        
         if self.left != None:
             self._level = self.left.level + 1
         if self.right != None and self.right.level + 1 > self._level:
             self._level = self.right.level + 1
 
-    def __getitem__(self, node: LearnedNode | int):
+    def __getitem__(self, node: LearnedNode | int) -> int | LearnedNode:
+        """The method returns either the LearnedNode object associated with the node id or the edge type connecting the node to the fanout when given a LearnedNode.
+
+        Args:
+            node (LearnedNode | int): The node id or the LearnedNode object
+
+        Returns:
+            _type_: int | LearnedNode: The edge type connecting the node to the fanout or the LearnedNode object associated with the node id
+        """        
         if isinstance(node, int):
             return self._fanout_id_to_object[node]
         else:
             return self._fanout_type[node]
 
-    def __setitem__(self, node, edge_type):
+    def __setitem__(self, node: LearnedNode, edge_type: int) -> None:
+        """The method sets the edge type connecting the node to the fanout (child)
+
+        Args:
+            node (LearnedNode): The LearnedNode representing the fanout (child)
+            edge_type (int): The edge type connecting the node to the fanout
+        """        
         self._fanout_type[node] = edge_type
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """The method returns a string representation of the node
+
+        Returns:
+            str: The string representation of the node
+        """        
         if self._type == LearnedNode.AND:
             type = "AND"
         # elif self._type==_Node.BUFFER:
@@ -295,11 +526,27 @@ class LearnedNode(_Node):
         )
 
     def __iter__(self) -> Iterator[LearnedNode]:
+        """The method returns an iterator for the node
+
+        Returns:
+            _type_: _description_
+
+        Yields:
+            Iterator[LearnedNode]: _description_
+        """        
         self._keys = list(self._fanout_id_to_object.keys())
         self._idx = 0
         return self
 
     def __next__(self) -> LearnedNode:
+        """The method returns the next node in the iterator
+
+        Raises:
+            StopIteration: _description_
+
+        Returns:
+            LearnedNode: _description_
+        """        
         if self._idx == len(self._keys):
             raise StopIteration
         self._idx += 1
