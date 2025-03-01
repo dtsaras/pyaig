@@ -4,6 +4,7 @@ from collections import deque
 import networkx as nx
 import torch
 import random
+import matplotlib.pyplot as plt
 
 from . aig import AIG, _Node
 from . aig_env import AIGEnv
@@ -164,7 +165,7 @@ class LearnedNode(_Node):
             left (LearnedNode): The node to be assigned as the left parent
         """        
         self._left = left
-        if left.has_truth_table():
+        if self._left.has_truth_table():
             self.calculate_truth_table()
 
     @right.setter
@@ -175,7 +176,7 @@ class LearnedNode(_Node):
             right (LearnedNode): The node to be assigned as the right parent
         """    
         self._right = right
-        if right.has_truth_table():
+        if self._right.has_truth_table():
             self.calculate_truth_table()
 
     @left_edge_type.setter
@@ -323,12 +324,14 @@ class LearnedNode(_Node):
             right (LearnedNode): The parent node to be set as the right parent
             right_edge_type (int): The type of edge connecting the right parent to the node. 1 for normal edge, -1 for negated edge
         """        
-        self.right = right
-        self.right_edge_type = right_edge_type
+        self._right = right
+        self._right_edge_type = right_edge_type
         self.swap_edges()
         if self._type == self.PO:
-            self.left = right
-            self.left_edge_type = right_edge_type
+            self._left = right
+            self._left_edge_type = right_edge_type
+        if right.has_truth_table():
+            self.calculate_truth_table()
         self.update_level()
 
     def update_edge_type(self, node: LearnedNode, edge_type: int) -> None:
@@ -876,9 +879,17 @@ class LearnedAIG(AIG):
     def to_networkx(self) -> nx.DiGraph:
         G = nx.DiGraph()
 
-        G.add_node(0, node_type="CONST")
-        G.add_nodes_from(range(1, len(self._pis) + 1), node_type="PI")
-        G.add_nodes_from(range(-1, -(len(self._pos) + 1), -1), node_type="PO")
+        # G.add_node(0, node_type="CONST", node_id=0)
+        for node in self._nodes:
+            if node.node_type == LearnedNode.AND:
+                G.add_node(node.node_id, node_type="AND", node_id=node.node_id)
+            elif node.node_type == LearnedNode.PI:
+                G.add_node(node.node_id, node_type="PI", node_id=node.node_id)
+            else:
+                G.add_node(node.node_id, node_type="CONST", node_id=node.node_id)
+        for po in self._pos:
+            G.add_node(po.node_id, node_type="PO", node_id=po.node_id)
+
         for node in self._nodes:
             if (
                 node.node_type != LearnedNode.PI
@@ -890,9 +901,10 @@ class LearnedAIG(AIG):
                 G.add_edge(
                     node.right.node_id, node.node_id, edge_type=node.right_edge_type
                 )
-        for node in list(G.nodes):
-            if "node_type" not in G.nodes[node]:
-                G.nodes[node]["node_type"] = "AND"
+        # for node in list(G.nodes):
+        #     if "node_type" not in G.nodes[node]:
+        #         G.nodes[node]["node_type"] = "AND"
+        #         # G.nodes[node]["node_id"] = node.node_id
 
         for po in self._pos:
             if po.left != None:
@@ -922,36 +934,113 @@ class LearnedAIG(AIG):
 
         position = nx.nx_agraph.pygraphviz_layout(G, prog="dot")
 
+        # Flip the y-coordinates to reverse the graph vertically
+        for node in position:
+            x, y = position[node]
+            position[node] = (x, -y)  # Negate the y-coordinate to flip vertically # type: ignore
+
         labels = {}
-        labels[0] = 0
-        for i in pis:
-            labels[i] = self._id_to_name[i]
+        for n, data in G.nodes(data=True):
+            labels[n] = data.get("node_id")
+        
+        # Modern color palette
+        pi_color = "#4CAF50"  # Green
+        po_color = "#FF5252"  # Red
+        and_color = "#2196F3"   # Blue
+        const_color = "#FFC107" # Amber
 
-        for i in pos:
-            labels[i] = self._po_to_name[i]
+        plt.figure(figsize=(12, 8))
 
+        # Draw nodes with different shapes, colors, and sizes
         nx.draw_networkx_nodes(
             G,
             position,
             nodelist=const,
-            node_color="green",
+            node_color=const_color,
             node_shape="s",
             label="CONST",
+            node_size=700,
+            alpha=0.8
         )
         nx.draw_networkx_nodes(
-            G, position, nodelist=pis, node_color="green", node_shape="s", label="PI"
+            G, 
+            position, 
+            nodelist=pis, 
+            node_color=pi_color, 
+            node_shape="o", 
+            label="LEAF",
+            node_size=700,
+            alpha=0.8
         )
         nx.draw_networkx_nodes(
-            G, position, nodelist=pos, node_color="red", node_shape="d", label="PO"
+            G, 
+            position, 
+            nodelist=pos, 
+            node_color=po_color, 
+            node_shape="^", 
+            label="ROOT",
+            node_size=900,
+            alpha=0.8
         )
         nx.draw_networkx_nodes(
-            G, position, nodelist=ands, node_color="blue", node_shape="o", label="AND"
+            G, 
+            position, 
+            nodelist=ands, 
+            node_color=and_color, 
+            node_shape="d", 
+            label="CUT",
+            node_size=700,
+            alpha=0.8
         )
 
-        nx.draw_networkx_labels(G, position, labels=labels)
+        # Draw labels with contrasting colors for better visibility
+        nx.draw_networkx_labels(G, position, labels=labels, font_weight='bold', font_size=10)
 
-        nx.draw_networkx_edges(G, position, edgelist=normal)
-        nx.draw_networkx_edges(G, position, edgelist=negated, style="--")
+        # Draw edges with different styles
+        nx.draw_networkx_edges(
+            G, 
+            position, 
+            edgelist=normal, 
+            width=1.5, 
+            edge_color='#555555',
+            arrows=True, 
+            arrowsize=15, 
+            arrowstyle='->'
+        )
+        nx.draw_networkx_edges(
+            G, 
+            position, 
+            edgelist=negated, 
+            style="--", 
+            width=1.5, 
+            edge_color='#555555',
+            arrows=True, 
+            arrowsize=15, 
+            arrowstyle='->'
+        )
+
+        # Fix the legend with smaller markers and better spacing
+        legend_elements = [
+            plt.Line2D([0], [0], marker='s', color='w', markerfacecolor=const_color, # type: ignore
+                      markersize=10, label='WINDOW', alpha=0.8),
+            plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=pi_color, # type: ignore
+                      markersize=10, label='LEAF', alpha=0.8),
+            plt.Line2D([0], [0], marker='^', color='w', markerfacecolor=po_color, # type: ignore
+                      markersize=10, label='ROOT', alpha=0.8),
+            plt.Line2D([0], [0], marker='d', color='w', markerfacecolor=and_color, # type: ignore
+                      markersize=10, label='CUT', alpha=0.8)
+        ]
+        plt.legend(handles=legend_elements, loc='upper right', frameon=True, 
+                  framealpha=0.9, facecolor='white', edgecolor='#CCCCCC')
+        
+        # Remove axis
+        plt.axis('off')
+        
+        # Add a title
+        plt.title('Circuit Graph Visualization', fontsize=16)
+        
+        plt.tight_layout()
+        plt.show()
 
     def set_name(self, node_id: int, name: int | str) -> None:
         # assert name not in self._name_to_id
