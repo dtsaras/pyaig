@@ -1507,8 +1507,7 @@ class LearnedAIG(AIG):
             left_parent_idx,
             right_parent_idx,
         ) = self.collect_actions()
-        # a = torch.stack(self._node_truth_tables).to(torch.float32)
-        # b = torch.stack(self._po_truth_tables).to(torch.float32)
+
         return (
             torch.stack(self._node_truth_tables),
             torch.stack(self._po_truth_tables),
@@ -1554,7 +1553,6 @@ class LearnedAIG(AIG):
     def get_truth_tables(self) -> torch.Tensor:
         return (
             torch.stack(self._node_truth_tables + self._po_truth_tables)
-            .to(torch.float32)
             .unsqueeze(0)
         )
 
